@@ -106,7 +106,7 @@ def load_sharegpt_traces(trace_file: str = 'ShareGPT_V3_unfiltered_cleaned_split
             return pickle.load(f)
     with open(trace_file, 'r') as f:
         traces = json.load(f)
-    llm_calls = []
+    calls = []
     inputs = []
     outputs = []
     while traces:
@@ -136,7 +136,7 @@ def load_sharegpt_traces(trace_file: str = 'ShareGPT_V3_unfiltered_cleaned_split
             input = human_input['value'],
             output = gpt_output['value'],
         )
-        llm_calls.append(llm_call)
+        calls.append(llm_call)
     inputs = sorted(inputs)
     outputs = sorted(outputs)
     std_input  = calculate_std(inputs)
@@ -147,8 +147,8 @@ def load_sharegpt_traces(trace_file: str = 'ShareGPT_V3_unfiltered_cleaned_split
 
     #Save to file programs
     with open(SHAREGPT_PKL, 'wb') as f:
-        pickle.dump(llm_calls, f)
-    return llm_calls
+        pickle.dump(calls, f)
+    return calls
 
 #Xiao: long dataset, prompt:5k~30k or decode token 5k~30k
 #https://github.com/LoongServe/LoongServe/blob/main/test/longserve/4-preprocess-dataset.py
@@ -172,7 +172,7 @@ def load_lonngserve_dataset(
             ])
             for filename in files
         ])
-        llm_calls  = []
+        calls  = []
         pbar = tqdm.tqdm(total=num_lines)
         inputs = []
         outputs = []
@@ -195,7 +195,7 @@ def load_lonngserve_dataset(
                             continue
                         inputs.append(prefill_token)
                         outputs.append(decode_token)
-                        llm_calls.append(LLMCall(
+                        calls.append(LLMCall(
                             id = str(uuid.uuid4()),
                             prefill_tokens = prefill_token,
                             decode_tokens = decode_token,
@@ -211,10 +211,11 @@ def load_lonngserve_dataset(
         metadata = []
         metadata.append((np.mean(inputs), std_input, np.percentile(inputs, 90), np.percentile(inputs, 99), np.mean(outputs), std_output, np.percentile(outputs, 90), np.percentile(outputs, 99)))
         with open(LEVAL_PKL, 'wb') as f:
-            pickle.dump(llm_calls, f)
-        return llm_calls 
+            pickle.dump(calls, f)
+        return calls 
 
 #wget https://huggingface.co/datasets/togethercomputer/Long-Data-Collections/resolve/main/fine-tune/natural_questions_10_200_docs.jsonl.zst
+# zstd -d natural_questions_10_200_docs.jsonl.zst
 #Xiao: long dataset, prompt:5k~30k or decode token 5k~30k
 #Long-Data-Collections: avg input:5545.622961428941 and std_input:1421.5441673262058 and p90 input:7489.0 and p99 input:7950.0 
 #Long-Data-Collections: avg output:173.623996893606 and std_output:175.06535842152365 and p90 output:278.0 and p99 output:1066.0
@@ -222,17 +223,17 @@ def load_long_data_collections():
     if os.path.exists(LOAD_DATA_COLLECTIONS):
         with open(LOAD_DATA_COLLECTIONS, 'rb') as f:
             return pickle.load(f)
-    path = "./natural_questions_10_200_docs.jsonl" #Xiao: this is hacking way to get the path
+    path = "/root/autodl-tmp/data/natural_questions_10_200_docs.jsonl" #Xiao: this is hacking way to get the path
     with open(path, "r") as f:
         lines = f.readlines()
-    llm_calls = []
+    calls = []
     inputs = []
     outputs = []
     metadata = [] 
     small = 4000
     large = 20000
     decode_threshold1= 100
-    decode_threshold2 = 500
+    decode_threshold2 = 1000
     for line in lines:
         line = json.loads(line)
         assert isinstance(line, dict)
@@ -250,7 +251,7 @@ def load_long_data_collections():
 
         inputs.append(prefill_token)
         outputs.append(decode_token)
-        llm_calls.append(
+        calls.append(
             LLMCall(
                 id = str(uuid.uuid4()),
                 prefill_tokens = prefill_token,
@@ -260,7 +261,7 @@ def load_long_data_collections():
             )
         )
     with open(LOAD_DATA_COLLECTIONS, 'wb') as f:
-        pickle.dump(llm_calls, f)
+        pickle.dump(calls, f)
 
     inputs = sorted(inputs)
     outputs = sorted(outputs)
@@ -399,8 +400,9 @@ def hybridserve_mixed_sharegpt_long_data_collections_leval(
         model_name: str="llama3_1_8B"
     ):
     print(f"mixed_sharegpt_long_data_collections_leval")
-    MIXED_SHAREGPT_LONG_DATA_COLLECT = f"mixed_sharegpt_long_data_collect_leval_{total_jobs}_ratio_{ratio}_arrival_period_{arrival_period}_arrival_rate_{arrival_rate}.pkl"
+    MIXED_SHAREGPT_LONG_DATA_COLLECT = f"mixed_sharegpt_long_data_collect_leval_{total_jobs}.0_ratio_{ratio}_arrival_period_{arrival_period}_arrival_rate_{arrival_rate}.pkl"
     if os.path.exists(MIXED_SHAREGPT_LONG_DATA_COLLECT):
+        print(f"1 os.path.exists(MIXED_SHAREGPT_LONG_DATA_COLLECT):{MIXED_SHAREGPT_LONG_DATA_COLLECT}", flush=True)
         with open(MIXED_SHAREGPT_LONG_DATA_COLLECT, 'rb') as f:
             return pickle.load(f)
     sharegpt_calls = load_sharegpt_traces(model_name = model_name)
@@ -501,8 +503,8 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     # load_sharegpt_traces()
     # load_lonngserve_dataset()
-    # load_long_data_collections()
-    load_arxiv_summary()
+    load_long_data_collections()
+    # load_arxiv_summary()
     # parser.add_argument("--dataset", type=str, default="sharegpt", help="dataset name")
     # parser.add_argument("--dataset_path", type=str, default="./ShareGPT_V3_unfiltered_cleaned_split.json", help="dataset path")
     # args = parser.parse_args()
