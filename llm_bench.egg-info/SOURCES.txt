@@ -1,5 +1,0 @@
-setup.py
-llm_bench.egg-info/PKG-INFO
-llm_bench.egg-info/SOURCES.txt
-llm_bench.egg-info/dependency_links.txt
-llm_bench.egg-info/top_level.txt
