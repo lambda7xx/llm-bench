@@ -409,7 +409,7 @@ def hybridserve_mixed_sharegpt_long_data_collections_leval(
     long_data_collect = load_long_data_collections()
     leval_dataset_path = "LEval/LEval-data"
     leval_name = "leval"
-    leval_calls = load_lonngserve_dataset()
+    leval_calls = [] #load_lonngserve_dataset()
     print(f"len(sharegpt_calls): {len(sharegpt_calls)} and len(long_data_collect): {len(long_data_collect)} and len(leval_calls): {len(leval_calls)}", flush=True)
     decode_threshold1 = 100
     decode_threshold2 = 500
@@ -501,9 +501,9 @@ def hybridserve_mixed_sharegpt_long_data_collections_leval(
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    # load_sharegpt_traces()
+    load_sharegpt_traces()
     # load_lonngserve_dataset()
-    load_long_data_collections()
+    # load_long_data_collections()
     # load_arxiv_summary()
     # parser.add_argument("--dataset", type=str, default="sharegpt", help="dataset name")
     # parser.add_argument("--dataset_path", type=str, default="./ShareGPT_V3_unfiltered_cleaned_split.json", help="dataset path")
