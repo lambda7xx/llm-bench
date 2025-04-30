@@ -42,7 +42,7 @@ def load_arxiv_summary():
         with open(ARXIV_SUMMARY, 'rb') as f:
             return pickle.load(f)
     files = []
-    dataset_path = "/root/autodl-tmp/arxiv-summarization/document" #Note(Xiao): this is hacking way to get the path
+    dataset_path = "./arxiv-summarization/document" #Note(Xiao): this is hacking way to get the path
     for root, dirs, filenames in os.walk(dataset_path):
         for filename in filenames:
             if filename.startswith("train"):
