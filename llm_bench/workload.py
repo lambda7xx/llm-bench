@@ -36,7 +36,7 @@ def calculate_std(data):
     return std
 
 
-#https://huggingface.co/datasets/ccdv/arxiv-summarization/
+#git lfs clone https://huggingface.co/datasets/ccdv/arxiv-summarization/
 def load_arxiv_summary():  
     if os.path.exists(ARXIV_SUMMARY):
         with open(ARXIV_SUMMARY, 'rb') as f:
