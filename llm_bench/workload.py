@@ -223,7 +223,7 @@ def load_long_data_collections():
     if os.path.exists(LOAD_DATA_COLLECTIONS):
         with open(LOAD_DATA_COLLECTIONS, 'rb') as f:
             return pickle.load(f)
-    path = "/root/autodl-tmp/data/natural_questions_10_200_docs.jsonl" #Xiao: this is hacking way to get the path
+    path = "./natural_questions_10_200_docs.jsonl" #Xiao: this is hacking way to get the path
     with open(path, "r") as f:
         lines = f.readlines()
     calls = []
