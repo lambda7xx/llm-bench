@@ -54,7 +54,7 @@ def load_arxiv_summary():
     large = 10000
     #NOTE(Xiao):this can change
     decode_small = 100 
-    decode_large = 1000
+    decode_large = 500
     for file in files:
         df = pd.read_parquet(file)
         for index, row in df.iterrows():
@@ -231,9 +231,9 @@ def load_long_data_collections():
     outputs = []
     metadata = [] 
     small = 4000
-    large = 20000
+    large = 10000
     decode_threshold1= 100
-    decode_threshold2 = 1000
+    decode_threshold2 = 500
     for line in lines:
         line = json.loads(line)
         assert isinstance(line, dict)
@@ -405,7 +405,7 @@ def hybridserve_mixed_sharegpt_long_data_collections_leval(
         print(f"1 os.path.exists(MIXED_SHAREGPT_LONG_DATA_COLLECT):{MIXED_SHAREGPT_LONG_DATA_COLLECT}", flush=True)
         with open(MIXED_SHAREGPT_LONG_DATA_COLLECT, 'rb') as f:
             return pickle.load(f)
-    sharegpt_calls = load_sharegpt_traces(model_name = model_name)
+    sharegpt_calls =[] # load_sharegpt_traces(model_name = model_name)
     long_data_collect = load_long_data_collections()
     leval_dataset_path = "LEval/LEval-data"
     leval_name = "leval"
@@ -501,9 +501,9 @@ def hybridserve_mixed_sharegpt_long_data_collections_leval(
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    load_sharegpt_traces()
+    # load_sharegpt_traces()
     # load_lonngserve_dataset()
-    # load_long_data_collections()
+    load_long_data_collections()
     # load_arxiv_summary()
     # parser.add_argument("--dataset", type=str, default="sharegpt", help="dataset name")
     # parser.add_argument("--dataset_path", type=str, default="./ShareGPT_V3_unfiltered_cleaned_split.json", help="dataset path")

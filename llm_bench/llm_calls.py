@@ -65,7 +65,7 @@ class LLMCall(GenericCall):
         self.total_execution_time = 0
         self.total_waiting_time = 0
         self.total_completion_time = 0
-        self.finished_time_list = []
+        self.iteration_time_list = []
         self.prefill_finish_time = 0
 
     def set_model_name(self, model_name: str):
@@ -90,5 +90,5 @@ class LLMCall(GenericCall):
         return self.prefill_tokens + self.decode_tokens
         
     def __repr__(self):
-        return f"LLMCall(\nprefill={self.prefill_tokens},\ndecode={self.decode_tokens},\ntotal_prefill={self.total_prefill_tokens},\nwaiting_time={self.waiting_time},\nexecution_time={self.execution_time},\narrival_time={self.arrival_time},\nprefill_finish_time={self.prefill_finish_time},\nfinish_time={self.finish_time})\n"
+        return f"LLMCall(\nid={self.id}\nprefill={self.prefill_tokens},\ndecode={self.decode_tokens},\ntotal_prefill={self.total_prefill_tokens},\nwaiting_time={self.waiting_time},\nexecution_time={self.execution_time},\narrival_time={self.arrival_time},\nprefill_finish_time={self.prefill_finish_time},\nfinish_time={self.finish_time})\n"
     
