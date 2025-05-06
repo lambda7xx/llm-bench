@@ -54,7 +54,7 @@ def load_arxiv_summary():
     large = 10000
     #NOTE(Xiao):this can change
     decode_small = 100 
-    decode_large = 1000
+    decode_large = 500
     for file in files:
         df = pd.read_parquet(file)
         for index, row in df.iterrows():
@@ -231,9 +231,9 @@ def load_long_data_collections():
     outputs = []
     metadata = [] 
     small = 4000
-    large = 20000
+    large = 10000
     decode_threshold1= 100
-    decode_threshold2 = 1000
+    decode_threshold2 = 500
     for line in lines:
         line = json.loads(line)
         assert isinstance(line, dict)
