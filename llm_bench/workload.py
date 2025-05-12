@@ -122,8 +122,13 @@ def load_sharegpt_traces(trace_file: str = 'ShareGPT_V3_unfiltered_cleaned_split
         gpt_output = conversations.pop(0)
         prefill_tokens = count_tokens(human_input['value'])
         decode_tokens = count_tokens(gpt_output['value'])
+        if prefill_tokens >= 1500 or decode_tokens >= 500:
+            continue 
+        if prefill_tokens <= 200:
+            continue 
         inputs.append(prefill_tokens)
         outputs.append(decode_tokens)
+        print(f"prefill_tokens:{prefill_tokens} and decode_tokens:{decode_tokens}")
         if model_name is not None:
             if (prefill_tokens + decode_tokens) >= 50000:
                 continue 
@@ -176,9 +181,9 @@ def load_lonngserve_dataset(
         pbar = tqdm.tqdm(total=num_lines)
         inputs = []
         outputs = []
-        small = 2500
-        large = 30000
-        decode_threshold1= 10
+        small = 4000
+        large = 10000
+        decode_threshold1= 100
         decode_threshold2 = 500
         for file in files:
             with open(file, "r") as f:
@@ -223,7 +228,7 @@ def load_long_data_collections():
     if os.path.exists(LOAD_DATA_COLLECTIONS):
         with open(LOAD_DATA_COLLECTIONS, 'rb') as f:
             return pickle.load(f)
-    path = "./natural_questions_10_200_docs.jsonl" #Xiao: this is hacking way to get the path
+    path = "/root/autodl-tmp/natural_questions_10_200_docs.jsonl" #Xiao: this is hacking way to get the path
     with open(path, "r") as f:
         lines = f.readlines()
     calls = []
@@ -251,8 +256,8 @@ def load_long_data_collections():
 
         inputs.append(prefill_token)
         outputs.append(decode_token)
-        calls.append(
-            LLMCall(
+        print(f"prefill_token:{prefill_token} and decode_token:{decode_token}", flush=True)
+        calls.append(LLMCall(
                 id = str(uuid.uuid4()),
                 prefill_tokens = prefill_token,
                 decode_tokens = decode_token,
@@ -388,6 +393,81 @@ def mixserve_generate_mixed_reqs_from_sharegpt_leval_long_data_collect(
         pickle.dump(mixed_calls, f)
     return mixed_calls
 
+def hybridserve_sharegpt(
+        arrival_rate = 1.0,
+        cv_factor=1.0,
+        total_jobs = 1000,
+        arrival_period = None,
+        seed = 2025,
+        ratio : float = 0.5,
+        quantized: bool=True,
+        model_name: str="llama3_1_8B"
+    ):
+    print(f"mixed_sharegpt_long_data_collections_leval")
+    MIXED_SHAREGPT_LONG_DATA_COLLECT = f"sharegpt_{total_jobs}.0_ratio_{ratio}_arrival_period_{arrival_period}_arrival_rate_{arrival_rate}.pkl"
+    if os.path.exists(MIXED_SHAREGPT_LONG_DATA_COLLECT):
+        print(f"1 os.path.exists(MIXED_SHAREGPT_LONG_DATA_COLLECT):{MIXED_SHAREGPT_LONG_DATA_COLLECT}", flush=True)
+        with open(MIXED_SHAREGPT_LONG_DATA_COLLECT, 'rb') as f:
+            return pickle.load(f)
+    sharegpt_calls =load_sharegpt_traces(model_name = model_name)
+    long_data_collect = []
+    leval_dataset_path = "LEval/LEval-data"
+    leval_name = "leval"
+    leval_calls = [] #load_lonngserve_dataset()
+
+    new_sharegpt_size = int(total_jobs)
+
+    print(f"2 len(sharegpt_calls): {len(sharegpt_calls)} and len(long_data_collect): {len(long_data_collect)} and len(leval_calls): {len(leval_calls)}", flush=True)
+    # Set the random seed
+    np.random.seed(seed)
+    alpha = (1.0 / cv_factor)**2
+    new_sharegpt_calls = random.sample(sharegpt_calls, new_sharegpt_size)
+    # Generate arrival times
+    if arrival_period is not None:
+        # Generate interarrival times until current_time >= arrival_period
+        interarrival_times = []
+        arrival_times = []
+        current_time = 0
+        while current_time < arrival_period:
+            interarrival_time = np.random.gamma(shape=alpha, scale=1 / (alpha * arrival_rate))
+            interarrival_times.append(interarrival_time)
+            current_time += interarrival_time
+            arrival_times.append(current_time)
+        arrival_times = np.array(arrival_times)
+        # Exclude the last arrival time if it exceeds arrival_period
+        if arrival_times[-1] > arrival_period:
+            arrival_times = arrival_times[:-1]
+        total_jobs = len(arrival_times)
+    else:
+        # Generate a fixed number of interarrival times
+        interarrival_times = np.array([
+            np.random.gamma(shape=alpha, scale=1 / (alpha * arrival_rate))
+            for _ in range(total_jobs - 1)
+        ])
+        interarrival_times = np.insert(interarrival_times, 0, 0)
+        arrival_times = np.cumsum(interarrival_times)
+    
+
+    mixed_calls = new_sharegpt_calls 
+    random.shuffle(mixed_calls)
+    mixed_calls = mixed_calls[:total_jobs]
+    
+    #Assigin arrival time
+    for idx, llm_call in enumerate(mixed_calls):
+        if quantized:
+            llm_call.arrival_time = math.ceil(arrival_times[idx])
+        else:
+            llm_call.arrival_time = arrival_times[idx]
+
+    for llm_call in mixed_calls:
+        uid = str(uuid.uuid4())
+        llm_call.id = uid
+    print(f"3 len(mixed_calls): {len(mixed_calls)} and total_jobs:{total_jobs}", flush=True)
+    #save the mixed_calls into a file
+    with open(MIXED_SHAREGPT_LONG_DATA_COLLECT, 'wb') as f:
+        pickle.dump(mixed_calls, f)
+    return mixed_calls
+
 
 def hybridserve_mixed_sharegpt_long_data_collections_leval(
         arrival_rate = 1.0,
@@ -501,9 +581,9 @@ def hybridserve_mixed_sharegpt_long_data_collections_leval(
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    # load_sharegpt_traces()
+    load_sharegpt_traces()
     # load_lonngserve_dataset()
-    load_long_data_collections()
+    #load_long_data_collections()
     # load_arxiv_summary()
     # parser.add_argument("--dataset", type=str, default="sharegpt", help="dataset name")
     # parser.add_argument("--dataset_path", type=str, default="./ShareGPT_V3_unfiltered_cleaned_split.json", help="dataset path")
