@@ -42,19 +42,30 @@ def load_arxiv_summary():
         with open(ARXIV_SUMMARY, 'rb') as f:
             return pickle.load(f)
     files = []
-    dataset_path = "./arxiv-summarization/document" #Note(Xiao): this is hacking way to get the path
+    dataset_path = "/root/autodl-tmp/data/arxiv-summarization/document" #Note(Xiao): this is hacking way to get the path
     for root, dirs, filenames in os.walk(dataset_path):
         for filename in filenames:
             if filename.startswith("train"):
                 files.append(os.path.join(root, filename))
+    dataset_path = "/root/autodl-tmp/data/arxiv-summarization/section" #Note(Xiao): this is hacking way to get the path
+
+    for root, dirs, filenames in os.walk(dataset_path):
+        for filename in filenames:
+            if filename.startswith("train"):
+                files.append(os.path.join(root, filename))
+
     calls = []
     inputs = []
     outputs = []
-    small = 4000 
-    large = 10000
+    small = 2000 
+    large = 20000
     #NOTE(Xiao):this can change
     decode_small = 100 
-    decode_large = 500
+    decode_large = 2000
+    prefill1 = 4000
+    prefill2 = 7000
+    prefill1_list = [] 
+    prefill2_list = []
     for file in files:
         df = pd.read_parquet(file)
         for index, row in df.iterrows():
@@ -68,6 +79,10 @@ def load_arxiv_summary():
                 continue
             if not ((decode_small <= decode_tokens <= decode_large)):
                 continue   
+            if small <= prefill_token <= prefill1:
+                prefill1_list.append(prefill_token)
+            if prefill1 < prefill_token <= prefill2:
+                prefill2_list.append(prefill_token)
             print(f"prefill_token: {prefill_token} and decode_tokens: {decode_tokens}")
             inputs.append(prefill_token)
             outputs.append(decode_tokens)
@@ -80,6 +95,7 @@ def load_arxiv_summary():
                     output = ""
                 )
             )
+    print(f"len(prefill1_list)(2000~4000): {len(prefill1_list)} and len(prefill2_list)(4000~7000): {len(prefill2_list)} and len(calls):{len(calls)}", flush=True)
     inputs = sorted(inputs)
     outputs = sorted(outputs)
     std_input  = calculate_std(inputs)
@@ -468,6 +484,112 @@ def hybridserve_sharegpt(
         pickle.dump(mixed_calls, f)
     return mixed_calls
 
+def skew_hybridserve_arxiv(
+        arrival_rate=1.0,
+        cv_factor=1.0,
+        total_jobs=1000,
+        arrival_period=None,
+        seed=2025,
+        ratio: float = 0.5,
+        quantized: bool = True,
+        model_name: str = "llama3_1_8B"
+):
+    print(f"skew_hybridserve_arxiv")
+    MIXED_ARXIV = f"skew_arxiv_{total_jobs}.0_ratio_{ratio}_arrival_period_{arrival_period}_arrival_rate_{arrival_rate}.pkl"
+    if os.path.exists(MIXED_ARXIV):
+        print(f"1 os.path.exists(MIXED_SHAREGPT_LONG_DATA_COLLECT):{MIXED_ARXIV}", flush=True)
+        with open(MIXED_ARXIV, 'rb') as f:
+            return pickle.load(f)
+
+    sharegpt_calls = []  # load_sharegpt_traces(model_name=model_name)
+    long_data_collect = load_arxiv_summary()
+    leval_calls = []  # load_leval_dataset()
+
+    decode_threshold1 = 100
+    decode_threshold2 = 500
+    prefill_threshold1 = 4000
+    prefill_threshold2 = 7000
+    # short = [] 
+    # long = []
+    # for llm_call in long_data_collect:
+    #     if llm_call.prefill_tokens <= 6000:
+    #         short.append(llm_call)
+    #     if llm_call.prefill_tokens > 6000:
+    #         long.append(llm_call)
+    #     print(f"prefill_tokens: {llm_call.prefill_tokens} and decode_tokens: {llm_call.decode_tokens}")
+    # print(f"len(short): {len(short)} and len(long): {len(long)}", flush=True)
+    # Step 1: Filter long_data_collect into two buckets
+    short_prefill = [
+        x for x in long_data_collect
+        if  x.prefill_tokens <=  prefill_threshold1 and decode_threshold1 <= x.decode_tokens <= decode_threshold2
+    ]
+    long_prefill = [
+        x for x in long_data_collect
+        if  prefill_threshold1 < x.prefill_tokens <= prefill_threshold2  and decode_threshold1 <= x.decode_tokens <= decode_threshold2
+    ]
+    print(f"len(short_prefill): {len(short_prefill)} and len(long_prefill): {len(long_prefill)}", flush=True)
+    # Step 2: Decide sample sizes
+
+    remaining_jobs = int(total_jobs)
+    long_quota = int(remaining_jobs * 0.25)
+    short_quota = int(remaining_jobs - long_quota)
+    print(f"short quota: {short_quota} and long_quota: {long_quota} and remaining_jobs :{remaining_jobs }", flush=True)
+    if len(long_prefill) >= long_quota:
+        selected_long = random.sample(long_prefill, long_quota)
+    else:
+        selected_long = long_prefill
+        short_quota += long_quota - len(long_prefill)
+
+    selected_short = random.sample(short_prefill, min(int(short_quota), len(short_prefill)))
+    new_arxiv_calls = selected_short + selected_long
+    random.shuffle(new_arxiv_calls)
+    print(f"len(new_long_data_collect_calls): {len(new_arxiv_calls)} and total_jobs:{total_jobs}", flush=True)
+    # Step 3: Sample sharegpt
+
+
+    # Step 4: Combine
+    mixed_calls = new_arxiv_calls
+    random.shuffle(mixed_calls)
+    mixed_calls = mixed_calls[:int(total_jobs)]
+
+    # Step 5: Generate arrival times
+    np.random.seed(seed)
+    alpha = (1.0 / cv_factor) ** 2
+    if arrival_period is not None:
+        interarrival_times = []
+        arrival_times = []
+        current_time = 0
+        while current_time < arrival_period:
+            interarrival_time = np.random.gamma(shape=alpha, scale=1 / (alpha * arrival_rate))
+            interarrival_times.append(interarrival_time)
+            current_time += interarrival_time
+            arrival_times.append(current_time)
+        arrival_times = np.array(arrival_times)
+        if arrival_times[-1] > arrival_period:
+            arrival_times = arrival_times[:-1]
+        total_jobs = len(arrival_times)
+    else:
+        interarrival_times = np.array([
+            np.random.gamma(shape=alpha, scale=1 / (alpha * arrival_rate))
+            for _ in range(total_jobs - 1)
+        ])
+        interarrival_times = np.insert(interarrival_times, 0, 0)
+        arrival_times = np.cumsum(interarrival_times)
+    current_len = min(len(arrival_times), len(mixed_calls))
+    arrival_times = arrival_times[:current_len]
+    # Step 6: Assign arrival times
+    mixed_calls = mixed_calls[:current_len]
+    print(f"current_len:{ current_len} and total_jobs:{total_jobs}", flush=True)
+    for idx, llm_call in enumerate(mixed_calls):
+        llm_call.arrival_time = math.ceil(arrival_times[idx]) if quantized else arrival_times[idx]
+        llm_call.id = str(uuid.uuid4())
+
+    print(f"Final mixed_calls: {len(mixed_calls)} / {total_jobs}")
+    with open(MIXED_ARXIV, 'wb') as f:
+        pickle.dump(mixed_calls, f)
+
+    return mixed_calls
+
 def skew_hybridserve_mixed_sharegpt_long_data_collections_leval(
         arrival_rate=1.0,
         cv_factor=1.0,
@@ -689,12 +811,12 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     # load_sharegpt_traces()
     # load_lonngserve_dataset()
-<<<<<<< HEAD
+
     #load_long_data_collections()
-=======
-    load_long_data_collections()
->>>>>>> 46ec490ced95b799fefdab78c09407d9479c8cdc
-    # load_arxiv_summary()
+
+    # load_long_data_collections()
+
+    load_arxiv_summary()
     # parser.add_argument("--dataset", type=str, default="sharegpt", help="dataset name")
     # parser.add_argument("--dataset_path", type=str, default="./ShareGPT_V3_unfiltered_cleaned_split.json", help="dataset path")
     # args = parser.parse_args()
