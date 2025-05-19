@@ -19,6 +19,8 @@ import sys
 from llm_bench.llm_calls import LLMCall
 from llm_bench.util import count_tokens
 
+import uuid 
+
 sys.setrecursionlimit(10000)
 
 
@@ -148,7 +150,7 @@ def load_sharegpt_traces(trace_file: str = 'ShareGPT_V3_unfiltered_cleaned_split
         if model_name is not None:
             if (prefill_tokens + decode_tokens) >= 50000:
                 continue 
-        if  decode_tokens == 0:
+        if  decode_tokens <=1:
             continue 
         llm_call = LLMCall(
             id = id,
@@ -629,6 +631,14 @@ def skew_hybridserve_mixed_sharegpt_long_data_collections_leval(
         x for x in long_data_collect
         if  x.prefill_tokens <= 6000 
     ]
+    temp_short_prefill = []
+    for llm_call in short_prefill:
+        llm_call_temp = copy.deepcopy(llm_call)
+        temp_short_prefill.append(llm_call)
+        llm_call_temp.input = str(uuid.uuid4())  + llm_call_temp.input  + str(uuid.uuid4())
+        temp_short_prefill.append(llm_call_temp)
+
+    
     long_prefill = [
         x for x in long_data_collect
         if 6000 < x.prefill_tokens 
@@ -696,6 +706,115 @@ def skew_hybridserve_mixed_sharegpt_long_data_collections_leval(
 
     return mixed_calls
 
+def hybridserve_mixed_sharegpt_arixv(
+        arrival_rate = 1.0,
+        cv_factor=1.0,
+        total_jobs = 1000,
+        arrival_period = None,
+        seed = 2025,
+        ratio : float = 0.5,
+        quantized: bool=True,
+        model_name: str="llama3_1_8B"
+    ):
+    print(f"mixed_sharegpt_long_data_collections_leval")
+    MIXED_SHAREGPT_LONG_DATA_COLLECT = f"mixed_sharegpt_long_data_collect_leval_{total_jobs}.0_ratio_{ratio}_arrival_period_{arrival_period}_arrival_rate_{arrival_rate}.pkl"
+    if os.path.exists(MIXED_SHAREGPT_LONG_DATA_COLLECT):
+        print(f"1 os.path.exists(MIXED_SHAREGPT_LONG_DATA_COLLECT):{MIXED_SHAREGPT_LONG_DATA_COLLECT}", flush=True)
+        with open(MIXED_SHAREGPT_LONG_DATA_COLLECT, 'rb') as f:
+            return pickle.load(f)
+    sharegpt_calls =load_sharegpt_traces() # load_sharegpt_traces(model_name = model_name)
+    long_data_collect = load_arxiv_summary()
+    leval_dataset_path = "LEval/LEval-data"
+    leval_name = "leval"
+    leval_calls = [] #load_lonngserve_dataset()
+    print(f"len(sharegpt_calls): {len(sharegpt_calls)} and len(long_data_collect): {len(long_data_collect)} and len(leval_calls): {len(leval_calls)}", flush=True)
+    decode_threshold1 = 10
+    decode_threshold2 = 500
+    prefill_threshold1 = 3000
+    prefill_threshold2 = 5000
+    new_long_data_collect = []
+    for llm_call in long_data_collect:
+        if llm_call.prefill_tokens > prefill_threshold2 or llm_call.prefill_tokens < prefill_threshold1:
+            continue
+        if (decode_threshold1<= llm_call.decode_tokens <= decode_threshold2):
+            new_long_data_collect.append(llm_call)
+    long_data_collect = new_long_data_collect
+    new_leval_calls = []
+    for llm_call in leval_calls:
+        if llm_call.prefill_tokens > prefill_threshold2 or llm_call.prefill_tokens < prefill_threshold1:
+            continue
+        if (decode_threshold1<= llm_call.decode_tokens <= decode_threshold2):
+            new_leval_calls.append(llm_call)
+    leval_calls = new_leval_calls 
+
+    long_data_collect = new_long_data_collect
+    new_sharegpt_size = int(total_jobs * ratio)
+    new_long_data_collect_size = int(total_jobs - new_sharegpt_size)
+    if new_long_data_collect_size > len(long_data_collect):
+        new_long_data_collect_size = len(long_data_collect)
+        new_leval_size = total_jobs - new_sharegpt_size - new_long_data_collect_size
+    else:
+        new_leval_size = 0
+    print(f"2 len(sharegpt_calls): {len(sharegpt_calls)} and len(long_data_collect): {len(long_data_collect)} and len(leval_calls): {len(leval_calls)}", flush=True)
+    print(f"3 len(new_sharegpt_calls): {new_sharegpt_size} and len(new_long_data_collect): {new_long_data_collect_size} and len(new_leval_calls): {new_leval_size}", flush=True)
+    # Set the random seed
+    np.random.seed(seed)
+    alpha = (1.0 / cv_factor)**2
+    if new_leval_size == 0:
+        new_sharegpt_calls = random.sample(sharegpt_calls, new_sharegpt_size)
+        new_long_data_collect_calls = random.sample(long_data_collect, new_long_data_collect_size)
+    else:
+        new_sharegpt_calls = random.sample(sharegpt_calls, new_sharegpt_size)
+        new_long_data_collect_calls = long_data_collect
+        new_leval_calls = random.sample(leval_calls, new_leval_size)
+        new_long_data_collect_calls.extend(new_leval_calls)
+
+    # Generate arrival times
+    if arrival_period is not None:
+        # Generate interarrival times until current_time >= arrival_period
+        interarrival_times = []
+        arrival_times = []
+        current_time = 0
+        while current_time < arrival_period:
+            interarrival_time = np.random.gamma(shape=alpha, scale=1 / (alpha * arrival_rate))
+            interarrival_times.append(interarrival_time)
+            current_time += interarrival_time
+            arrival_times.append(current_time)
+        arrival_times = np.array(arrival_times)
+        # Exclude the last arrival time if it exceeds arrival_period
+        if arrival_times[-1] > arrival_period:
+            arrival_times = arrival_times[:-1]
+        total_jobs = len(arrival_times)
+    else:
+        # Generate a fixed number of interarrival times
+        interarrival_times = np.array([
+            np.random.gamma(shape=alpha, scale=1 / (alpha * arrival_rate))
+            for _ in range(total_jobs - 1)
+        ])
+        interarrival_times = np.insert(interarrival_times, 0, 0)
+        arrival_times = np.cumsum(interarrival_times)
+    
+
+    mixed_calls = new_sharegpt_calls + new_long_data_collect_calls
+    random.shuffle(mixed_calls)
+    mixed_calls = mixed_calls[:total_jobs]
+    
+    #Assigin arrival time
+    for idx, llm_call in enumerate(mixed_calls):
+        if quantized:
+            llm_call.arrival_time = math.ceil(arrival_times[idx])
+        else:
+            llm_call.arrival_time = arrival_times[idx]
+
+    for llm_call in mixed_calls:
+        uid = str(uuid.uuid4())
+        llm_call.id = uid
+    print(f"3 len(mixed_calls): {len(mixed_calls)} and total_jobs:{total_jobs}", flush=True)
+    #save the mixed_calls into a file
+    with open(MIXED_SHAREGPT_LONG_DATA_COLLECT, 'wb') as f:
+        pickle.dump(mixed_calls, f)
+    return mixed_calls
+
 
 def hybridserve_mixed_sharegpt_long_data_collections_leval(
         arrival_rate = 1.0,
@@ -713,13 +832,13 @@ def hybridserve_mixed_sharegpt_long_data_collections_leval(
         print(f"1 os.path.exists(MIXED_SHAREGPT_LONG_DATA_COLLECT):{MIXED_SHAREGPT_LONG_DATA_COLLECT}", flush=True)
         with open(MIXED_SHAREGPT_LONG_DATA_COLLECT, 'rb') as f:
             return pickle.load(f)
-    sharegpt_calls =[] # load_sharegpt_traces(model_name = model_name)
+    sharegpt_calls =load_sharegpt_traces() # load_sharegpt_traces(model_name = model_name)
     long_data_collect = load_long_data_collections()
     leval_dataset_path = "LEval/LEval-data"
     leval_name = "leval"
     leval_calls = [] #load_lonngserve_dataset()
     print(f"len(sharegpt_calls): {len(sharegpt_calls)} and len(long_data_collect): {len(long_data_collect)} and len(leval_calls): {len(leval_calls)}", flush=True)
-    decode_threshold1 = 100
+    decode_threshold1 = 10
     decode_threshold2 = 500
     prefill_threshold1 = 4000
     prefill_threshold2 = 10000
