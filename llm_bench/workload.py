@@ -494,7 +494,8 @@ def skew_hybridserve_arxiv(
         seed=2025,
         ratio: float = 0.5,
         quantized: bool = True,
-        model_name: str = "llama3_1_8B"
+        model_name: str = "llama3_1_8B",
+        offline: bool = False
 ):
     print(f"skew_hybridserve_arxiv")
     MIXED_ARXIV = f"skew_arxiv_{total_jobs}.0_ratio_{ratio}_arrival_period_{arrival_period}_arrival_rate_{arrival_rate}.pkl"
@@ -544,7 +545,10 @@ def skew_hybridserve_arxiv(
     mixed_calls = new_arxiv_calls
     random.shuffle(mixed_calls)
     mixed_calls = mixed_calls[:int(total_jobs)]
-
+    if offline:
+        with open(MIXED_ARXIV, 'wb') as f:
+            pickle.dump(mixed_calls, f)
+        return mixed_calls
     # Step 5: Generate arrival times
     np.random.seed(seed)
     alpha = (1.0 / cv_factor) ** 2
@@ -591,7 +595,8 @@ def skew_hybridserve_mixed_sharegpt_long_data_collections_leval(
         seed=2025,
         ratio: float = 0.5,
         quantized: bool = True,
-        model_name: str = "llama3_1_8B"
+        model_name: str = "llama3_1_8B",
+        offline: bool = False
 ):
     print(f"mixed_sharegpt_long_data_collections_leval")
     MIXED_SHAREGPT_LONG_DATA_COLLECT = f"skew_mixed_sharegpt_long_data_collect_leval_total_jobs_{total_jobs}.0_ratio_{ratio}_arrival_period_{arrival_period}_arrival_rate_{arrival_rate}.pkl"
@@ -645,6 +650,10 @@ def skew_hybridserve_mixed_sharegpt_long_data_collections_leval(
 
     # Step 4: Combine
     mixed_calls = new_sharegpt_calls + new_long_data_collect_calls
+    if offline:
+        with open(MIXED_SHAREGPT_LONG_DATA_COLLECT, 'wb') as f:
+            pickle.dump(mixed_calls, f)
+        return mixed_calls 
     random.shuffle(mixed_calls)
     mixed_calls = mixed_calls[:int(total_jobs)]
 
@@ -804,7 +813,8 @@ def hybridserve_mixed_sharegpt_long_data_collections_leval(
         seed = 2025,
         ratio : float = 0.5,
         quantized: bool=True,
-        model_name: str="llama3_1_8B"
+        model_name: str="llama3_1_8B",
+        offline: bool = False
     ):
     print(f"mixed_sharegpt_long_data_collections_leval")
     MIXED_SHAREGPT_LONG_DATA_COLLECT = f"mixed_sharegpt_long_data_collect_leval_total_jobs_{total_jobs}.0_ratio_{ratio}_arrival_period_{arrival_period}_arrival_rate_{arrival_rate}.pkl"
@@ -888,6 +898,10 @@ def hybridserve_mixed_sharegpt_long_data_collections_leval(
     mixed_calls = new_sharegpt_calls + new_long_data_collect_calls
     random.shuffle(mixed_calls)
     mixed_calls = mixed_calls[:total_jobs]
+    if offline:
+        with open(MIXED_SHAREGPT_LONG_DATA_COLLECT, 'wb') as f:
+            pickle.dump(mixed_calls, f)
+        return mixed_calls
     
     #Assigin arrival time
     for idx, llm_call in enumerate(mixed_calls):
