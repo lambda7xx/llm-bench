@@ -511,16 +511,7 @@ def skew_hybridserve_arxiv(
     decode_threshold2 = 500
     prefill_threshold1 = 4000
     prefill_threshold2 = 7000
-    # short = [] 
-    # long = []
-    # for llm_call in long_data_collect:
-    #     if llm_call.prefill_tokens <= 6000:
-    #         short.append(llm_call)
-    #     if llm_call.prefill_tokens > 6000:
-    #         long.append(llm_call)
-    #     print(f"prefill_tokens: {llm_call.prefill_tokens} and decode_tokens: {llm_call.decode_tokens}")
-    # print(f"len(short): {len(short)} and len(long): {len(long)}", flush=True)
-    # Step 1: Filter long_data_collect into two buckets
+
     short_prefill = [
         x for x in long_data_collect
         if  x.prefill_tokens <=  prefill_threshold1 and decode_threshold1 <= x.decode_tokens <= decode_threshold2
@@ -545,7 +536,7 @@ def skew_hybridserve_arxiv(
     selected_short = random.sample(short_prefill, min(int(short_quota), len(short_prefill)))
     new_arxiv_calls = selected_short + selected_long
     random.shuffle(new_arxiv_calls)
-    print(f"len(new_long_data_collect_calls): {len(new_arxiv_calls)} and total_jobs:{total_jobs}", flush=True)
+    print(f"skew_hybridserve_arxiv, len(selected_shor):{len(selected_shor)} and  len(selected_long):{len(selected_long)} and total_jobs:{total_jobs}", flush=True)
     # Step 3: Sample sharegpt
 
 
@@ -617,16 +608,6 @@ def skew_hybridserve_mixed_sharegpt_long_data_collections_leval(
     decode_threshold2 = 500
     prefill_threshold1 = 4000
     prefill_threshold2 = 10000
-    # short = [] 
-    # long = []
-    # for llm_call in long_data_collect:
-    #     if llm_call.prefill_tokens <= 6000:
-    #         short.append(llm_call)
-    #     if llm_call.prefill_tokens > 6000:
-    #         long.append(llm_call)
-    #     print(f"prefill_tokens: {llm_call.prefill_tokens} and decode_tokens: {llm_call.decode_tokens}")
-    # print(f"len(short): {len(short)} and len(long): {len(long)}", flush=True)
-    # Step 1: Filter long_data_collect into two buckets
     short_prefill = [
         x for x in long_data_collect
         if  x.prefill_tokens <= 6000 
@@ -637,7 +618,6 @@ def skew_hybridserve_mixed_sharegpt_long_data_collections_leval(
         temp_short_prefill.append(llm_call)
         llm_call_temp.input = str(uuid.uuid4())  + llm_call_temp.input  + str(uuid.uuid4())
         temp_short_prefill.append(llm_call_temp)
-    print(f"1 len(temp_short_prefill):{len(temp_short_prefill)} and len(short_prefill): {len(short_prefill)} ", flush=True)
     short_prefill = copy.deepcopy(temp_short_prefill)
     long_prefill = [
         x for x in long_data_collect
@@ -659,7 +639,7 @@ def skew_hybridserve_mixed_sharegpt_long_data_collections_leval(
     selected_short = random.sample(short_prefill, min(int(short_quota), len(short_prefill)))
     new_long_data_collect_calls = selected_short + selected_long
     random.shuffle(new_long_data_collect_calls)
-    print(f"len(new_long_data_collect_calls): {len(new_long_data_collect_calls)} and total_jobs:{total_jobs}", flush=True)
+    print(f"skew_hybridserve_mixed_sharegpt_long_data_collections_leval len(selected_short):{ selected_short} and len(selected_long):{selected_long} and total_jobs:{total_jobs}", flush=True)
     # Step 3: Sample sharegpt
     new_sharegpt_calls = random.sample(sharegpt_calls, new_sharegpt_size)
 
