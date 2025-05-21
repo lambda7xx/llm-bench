@@ -537,7 +537,7 @@ def skew_hybridserve_arxiv(
     selected_short = random.sample(short_prefill, min(int(short_quota), len(short_prefill)))
     new_arxiv_calls = selected_short + selected_long
     random.shuffle(new_arxiv_calls)
-    print(f"skew_hybridserve_arxiv, len(selected_shor):{len(selected_shor)} and  len(selected_long):{len(selected_long)} and total_jobs:{total_jobs}", flush=True)
+    print(f"skew_hybridserve_arxiv, len(selected_shor):{len(selected_short)} and  len(selected_long):{len(selected_long)} and total_jobs:{total_jobs}", flush=True)
     # Step 3: Sample sharegpt
 
 
@@ -545,7 +545,10 @@ def skew_hybridserve_arxiv(
     mixed_calls = new_arxiv_calls
     random.shuffle(mixed_calls)
     mixed_calls = mixed_calls[:int(total_jobs)]
+    
     if offline:
+        for llm_call in mixed_calls:
+            llm_call.id = str(uuid.uuid4())
         with open(MIXED_ARXIV, 'wb') as f:
             pickle.dump(mixed_calls, f)
         return mixed_calls
@@ -651,6 +654,8 @@ def skew_hybridserve_mixed_sharegpt_long_data_collections_leval(
     # Step 4: Combine
     mixed_calls = new_sharegpt_calls + new_long_data_collect_calls
     if offline:
+        for llm_call in mixed_calls:
+            llm_call.id = str(uuid.uuid4())
         with open(MIXED_SHAREGPT_LONG_DATA_COLLECT, 'wb') as f:
             pickle.dump(mixed_calls, f)
         return mixed_calls 
@@ -899,6 +904,8 @@ def hybridserve_mixed_sharegpt_long_data_collections_leval(
     random.shuffle(mixed_calls)
     mixed_calls = mixed_calls[:total_jobs]
     if offline:
+        for llm_call in mixed_calls:
+            llm_call.id = str(uuid.uuid4())
         with open(MIXED_SHAREGPT_LONG_DATA_COLLECT, 'wb') as f:
             pickle.dump(mixed_calls, f)
         return mixed_calls
