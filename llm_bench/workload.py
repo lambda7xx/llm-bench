@@ -865,6 +865,8 @@ def hybridserve_mixed_sharegpt_long_data_collections_leval(
     # Set the random seed
     np.random.seed(seed)
     alpha = (1.0 / cv_factor)**2
+
+
     if new_leval_size == 0:
         new_sharegpt_calls = random.sample(sharegpt_calls, new_sharegpt_size)
         new_long_data_collect_calls = random.sample(long_data_collect, new_long_data_collect_size)
@@ -873,6 +875,15 @@ def hybridserve_mixed_sharegpt_long_data_collections_leval(
         new_long_data_collect_calls = long_data_collect
         new_leval_calls = random.sample(leval_calls, new_leval_size)
         new_long_data_collect_calls.extend(new_leval_calls)
+    print(f"len(new_sharegpt_calls): {len(new_sharegpt_calls)} and len(new_long_data_collect_calls): {len(new_long_data_collect_calls)} and len(new_leval_calls): {len(new_leval_calls)} and total_jobs:{total_jobs}", flush=True)
+    mixed_calls = new_sharegpt_calls + new_long_data_collect_calls
+    random.shuffle(mixed_calls)
+    if offline:
+        for llm_call in mixed_calls:
+            llm_call.id = str(uuid.uuid4())
+        with open(MIXED_SHAREGPT_LONG_DATA_COLLECT, 'wb') as f:
+            pickle.dump(mixed_calls, f)
+        return mixed_calls
 
     # Generate arrival times
     if arrival_period is not None:
@@ -900,15 +911,9 @@ def hybridserve_mixed_sharegpt_long_data_collections_leval(
         arrival_times = np.cumsum(interarrival_times)
     
 
-    mixed_calls = new_sharegpt_calls + new_long_data_collect_calls
-    random.shuffle(mixed_calls)
+
     mixed_calls = mixed_calls[:total_jobs]
-    if offline:
-        for llm_call in mixed_calls:
-            llm_call.id = str(uuid.uuid4())
-        with open(MIXED_SHAREGPT_LONG_DATA_COLLECT, 'wb') as f:
-            pickle.dump(mixed_calls, f)
-        return mixed_calls
+
     
     #Assigin arrival time
     for idx, llm_call in enumerate(mixed_calls):
