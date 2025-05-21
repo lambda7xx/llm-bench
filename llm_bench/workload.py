@@ -603,7 +603,7 @@ def skew_hybridserve_mixed_sharegpt_long_data_collections_leval(
         model_name: str = "llama3_1_8B"
 ):
     print(f"mixed_sharegpt_long_data_collections_leval")
-    MIXED_SHAREGPT_LONG_DATA_COLLECT = f"skew_mixed_sharegpt_long_data_collect_leval_{total_jobs}.0_ratio_{ratio}_arrival_period_{arrival_period}_arrival_rate_{arrival_rate}.pkl"
+    MIXED_SHAREGPT_LONG_DATA_COLLECT = f"skew_mixed_sharegpt_long_data_collect_leval_total_jobs_{total_jobs}.0_ratio_{ratio}_arrival_period_{arrival_period}_arrival_rate_{arrival_rate}.pkl"
     if os.path.exists(MIXED_SHAREGPT_LONG_DATA_COLLECT):
         print(f"1 os.path.exists(MIXED_SHAREGPT_LONG_DATA_COLLECT):{MIXED_SHAREGPT_LONG_DATA_COLLECT}", flush=True)
         with open(MIXED_SHAREGPT_LONG_DATA_COLLECT, 'rb') as f:
@@ -637,13 +637,13 @@ def skew_hybridserve_mixed_sharegpt_long_data_collections_leval(
         temp_short_prefill.append(llm_call)
         llm_call_temp.input = str(uuid.uuid4())  + llm_call_temp.input  + str(uuid.uuid4())
         temp_short_prefill.append(llm_call_temp)
-
-    
+    print(f"1 len(temp_short_prefill):{len(temp_short_prefill)} and len(short_prefill): {len(short_prefill)} ", flush=True)
+    short_prefill = copy.deepcopy(temp_short_prefill)
     long_prefill = [
         x for x in long_data_collect
         if 6000 < x.prefill_tokens 
     ]
-    print(f"len(short_prefill): {len(short_prefill)} and len(long_prefill): {len(long_prefill)}", flush=True)
+    print(f"2 len(temp_short_prefill):{len(temp_short_prefill)} and len(short_prefill): {len(short_prefill)} and len(long_prefill): {len(long_prefill)}", flush=True)
     # Step 2: Decide sample sizes
     new_sharegpt_size = int(total_jobs * ratio)
     remaining_jobs = total_jobs - new_sharegpt_size
@@ -827,7 +827,7 @@ def hybridserve_mixed_sharegpt_long_data_collections_leval(
         model_name: str="llama3_1_8B"
     ):
     print(f"mixed_sharegpt_long_data_collections_leval")
-    MIXED_SHAREGPT_LONG_DATA_COLLECT = f"mixed_sharegpt_long_data_collect_leval_{total_jobs}.0_ratio_{ratio}_arrival_period_{arrival_period}_arrival_rate_{arrival_rate}.pkl"
+    MIXED_SHAREGPT_LONG_DATA_COLLECT = f"mixed_sharegpt_long_data_collect_leval_total_jobs_{total_jobs}.0_ratio_{ratio}_arrival_period_{arrival_period}_arrival_rate_{arrival_rate}.pkl"
     if os.path.exists(MIXED_SHAREGPT_LONG_DATA_COLLECT):
         print(f"1 os.path.exists(MIXED_SHAREGPT_LONG_DATA_COLLECT):{MIXED_SHAREGPT_LONG_DATA_COLLECT}", flush=True)
         with open(MIXED_SHAREGPT_LONG_DATA_COLLECT, 'rb') as f:
