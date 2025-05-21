@@ -639,7 +639,7 @@ def skew_hybridserve_mixed_sharegpt_long_data_collections_leval(
     selected_short = random.sample(short_prefill, min(int(short_quota), len(short_prefill)))
     new_long_data_collect_calls = selected_short + selected_long
     random.shuffle(new_long_data_collect_calls)
-    print(f"skew_hybridserve_mixed_sharegpt_long_data_collections_leval len(selected_short):{ selected_short} and len(selected_long):{selected_long} and total_jobs:{total_jobs}", flush=True)
+    print(f"skew_hybridserve_mixed_sharegpt_long_data_collections_leval len(selected_short):{ len(selected_short)} and len(selected_long):{len(selected_long)} and total_jobs:{total_jobs}", flush=True)
     # Step 3: Sample sharegpt
     new_sharegpt_calls = random.sample(sharegpt_calls, new_sharegpt_size)
 
