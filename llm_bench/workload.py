@@ -24,10 +24,10 @@ import uuid
 sys.setrecursionlimit(10000)
 
 
-SHAREGPT_PKL = 'sharegpt.pkl'
-LEVAL_PKL = 'leval.pkl'
-LOAD_DATA_COLLECTIONS = 'long_data_collections.pkl'
-ARXIV_SUMMARY="arxiv_summary.pkl"
+SHAREGPT_PKL = '/root/autodl-tmp/HybridServe/examples/hybridserve/sharegpt.pkl'
+LEVAL_PKL = '/root/autodl-tmp/HybridServe/examples/hybridserve/leval.pkl'
+LOAD_DATA_COLLECTIONS = '/root/autodl-tmp/HybridServe/examples/hybridserve/long_data_collections.pkl'
+ARXIV_SUMMARY="/root/autodl-tmp/HybridServe/examples/hybridserve/arxiv_summary.pkl"
 
 
 def calculate_std(data):
@@ -497,8 +497,8 @@ def skew_hybridserve_arxiv(
         model_name: str = "llama3_1_8B",
         offline: bool = False
 ):
-    print(f"skew_hybridserve_arxiv")
-    MIXED_ARXIV = f"skew_arxiv_{total_jobs}.0_ratio_{ratio}_arrival_period_{arrival_period}_arrival_rate_{arrival_rate}.pkl"
+    print(f"skew_hybridserve_arxiv", flush=True)
+    MIXED_ARXIV = f"/root/autodl-tmp/HybridServe/examples/hybridserve/save_data/skew_arxiv_{total_jobs}.0_ratio_{ratio}_arrival_period_{arrival_period}_arrival_rate_{arrival_rate}.pkl"
     if os.path.exists(MIXED_ARXIV):
         print(f"1 os.path.exists(MIXED_SHAREGPT_LONG_DATA_COLLECT):{MIXED_ARXIV}", flush=True)
         with open(MIXED_ARXIV, 'rb') as f:
@@ -601,8 +601,8 @@ def skew_hybridserve_mixed_sharegpt_long_data_collections_leval(
         model_name: str = "llama3_1_8B",
         offline: bool = False
 ):
-    print(f"mixed_sharegpt_long_data_collections_leval")
-    MIXED_SHAREGPT_LONG_DATA_COLLECT = f"skew_mixed_sharegpt_long_data_collect_leval_total_jobs_{total_jobs}.0_ratio_{ratio}_arrival_period_{arrival_period}_arrival_rate_{arrival_rate}.pkl"
+    print(f"skew_hybridserve_mixed_sharegpt_long_data_collections_leval, total_jobs:{total_jobs} and ratio:{ratio} and arrival_period:{arrival_period} and arrival_rate:{arrival_rate}")
+    MIXED_SHAREGPT_LONG_DATA_COLLECT = f"/root/autodl-tmp/HybridServe/examples/hybridserve/save_data/skew_mixed_sharegpt_long_data_collect_leval_{total_jobs}.0_ratio_{ratio}_arrival_period_{arrival_period}_arrival_rate_{arrival_rate}.pkl"
     if os.path.exists(MIXED_SHAREGPT_LONG_DATA_COLLECT):
         print(f"1 os.path.exists(MIXED_SHAREGPT_LONG_DATA_COLLECT):{MIXED_SHAREGPT_LONG_DATA_COLLECT}", flush=True)
         with open(MIXED_SHAREGPT_LONG_DATA_COLLECT, 'rb') as f:
@@ -822,7 +822,8 @@ def hybridserve_mixed_sharegpt_long_data_collections_leval(
         offline: bool = False
     ):
     print(f"mixed_sharegpt_long_data_collections_leval")
-    MIXED_SHAREGPT_LONG_DATA_COLLECT = f"mixed_sharegpt_long_data_collect_leval_total_jobs_{total_jobs}.0_ratio_{ratio}_arrival_period_{arrival_period}_arrival_rate_{arrival_rate}.pkl"
+    MIXED_SHAREGPT_LONG_DATA_COLLECT = f"/root/autodl-tmp/HybridServe/examples/hybridserve/save_data/mixed_sharegpt_long_data_collect_leval_{total_jobs}.0_ratio_{ratio}_arrival_period_{arrival_period}_arrival_rate_{arrival_rate}.pkl"
+    print(f"MIXED_SHAREGPT_LONG_DATA_COLLECT:{MIXED_SHAREGPT_LONG_DATA_COLLECT}")
     if os.path.exists(MIXED_SHAREGPT_LONG_DATA_COLLECT):
         print(f"1 os.path.exists(MIXED_SHAREGPT_LONG_DATA_COLLECT):{MIXED_SHAREGPT_LONG_DATA_COLLECT}", flush=True)
         with open(MIXED_SHAREGPT_LONG_DATA_COLLECT, 'rb') as f:
