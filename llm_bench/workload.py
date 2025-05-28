@@ -115,6 +115,8 @@ def load_arxiv_summary():
         pickle.dump(calls, f)
     return calls
 
+
+
 # wget https://huggingface.co/datasets/anon8231489123/ShareGPT_Vicuna_unfiltered/resolve/main/ShareGPT_V3_unfiltered_cleaned_split.json
 def load_sharegpt_traces(trace_file: str = 'ShareGPT_V3_unfiltered_cleaned_split.json', model_name=None) -> List[Dict]:
     trace_file = "./ShareGPT_V3_unfiltered_cleaned_split.json" #Xiao: this is hacking way to get the path
@@ -291,6 +293,179 @@ def load_long_data_collections():
     std_input  = calculate_std(inputs)
     std_output = calculate_std(outputs)
     metadata.append((np.mean(inputs), std_input, np.percentile(inputs, 90), np.percentile(inputs, 99), np.mean(outputs), std_output, np.percentile(outputs, 90), np.percentile(outputs, 99)))
+
+
+def analysis_long_data_collection():
+    long_data_collect = load_long_data_collections()
+    short_prefill = [
+        x for x in long_data_collect
+        if  x.prefill_tokens <= 6000 
+    ]
+    temp_short_prefill = []
+    for llm_call in short_prefill:
+        llm_call_temp = copy.deepcopy(llm_call)
+        temp_short_prefill.append(llm_call)
+        llm_call_temp.input = str(uuid.uuid4())  + llm_call_temp.input  + str(uuid.uuid4())
+        temp_short_prefill.append(llm_call_temp)
+    short_prefill = copy.deepcopy(temp_short_prefill)
+    long_prefill = [
+        x for x in long_data_collect
+        if 6000 < x.prefill_tokens 
+    ]
+    max_short_samples = len(short_prefill)
+    max_long_samples = len(long_prefill)
+    max_total_by_short = max_short_samples / 0.7
+    max_total_by_long = max_long_samples / 0.3
+    num_total = int(min(max_total_by_short, max_total_by_long))
+    num_short = int(num_total * 0.7)
+    num_long = num_total - num_short  
+    sampled_short = random.sample(short_prefill, num_short)
+    sampled_long = random.sample(long_prefill, num_long)
+    long_data_collect_call = sampled_short + sampled_long
+    input_token = []
+    output_token = []
+    for llm_call in long_data_collect_call:
+        prefill_token = llm_call.prefill_tokens
+        decode_token = llm_call.decode_tokens
+        input_token.append(prefill_token)
+        output_token.append(decode_token)
+    std_input  = calculate_std(input_token)
+    std_output = calculate_std(output_token)
+    avg_input = np.mean(input_token)
+    avg_output = np.mean(output_token)
+    p50_input = np.percentile(input_token, 50)
+    p50_output = np.percentile(output_token, 50)
+    p95_input = np.percentile(input_token, 95)
+    p95_output = np.percentile(output_token, 95)
+    p99_input = np.percentile(input_token, 99)
+    p99_output = np.percentile(output_token, 99)
+    metric ={
+        "std_input": std_input,
+        "std_output": std_output,
+        "avg_input": avg_input,
+        "avg_output": avg_output,
+        "p50_input": p50_input,
+        "p50_output": p50_output,
+        "p95_input": p95_input,
+        "p95_output": p95_output,
+        "p99_input": p99_input,
+        "p99_output": p99_output
+    }
+    csv_file = "long_data_collection.csv"
+    metrics_df = pd.DataFrame([metric])
+    if os.path.exists(csv_file):
+        metrics_df.to_csv(csv_file, mode='a', index=False, header=False)
+    else:
+        metrics_df.to_csv(csv_file, index=False, header=True)
+
+def anayslis_arxiv():
+
+    decode_threshold1 = 100
+    decode_threshold2 = 500
+    prefill_threshold1 = 4000
+    prefill_threshold2 = 7000
+    arxiv = load_arxiv_summary()
+    short_prefill = [
+        x for x in arxiv
+        if  x.prefill_tokens <=  prefill_threshold1 and decode_threshold1 <= x.decode_tokens <= decode_threshold2
+    ]
+    long_prefill = [
+        x for x in arxiv
+        if  prefill_threshold1 < x.prefill_tokens <= prefill_threshold2  and decode_threshold1 <= x.decode_tokens <= decode_threshold2
+    ]
+
+    max_short_samples = len(short_prefill)
+    max_long_samples = len(long_prefill)
+    max_total_by_short = max_short_samples / 0.75
+    max_total_by_long = max_long_samples / 0.25
+    num_total = int(min(max_total_by_short, max_total_by_long))
+    num_short = int(num_total * 0.7)
+    num_long = num_total - num_short  
+    sampled_short = random.sample(short_prefill, num_short)
+    sampled_long = random.sample(long_prefill, num_long)
+    arxiv_call = sampled_long + sampled_short
+    input_token = []
+    output_token = []
+
+    for llm_call in arxiv_call:
+        prefill_token = llm_call.prefill_tokens
+        decode_token = llm_call.decode_tokens
+        input_token.append(prefill_token)
+        output_token.append(decode_token)
+    
+    std_input  = calculate_std(input_token)
+    std_output = calculate_std(output_token)
+    avg_input = np.mean(input_token)
+    avg_output = np.mean(output_token)
+    p50_input = np.percentile(input_token, 50)
+    p50_output = np.percentile(output_token, 50)
+    p95_input = np.percentile(input_token, 95)
+    p95_output = np.percentile(output_token, 95)
+    p99_input = np.percentile(input_token, 99)
+    p99_output = np.percentile(output_token, 99)
+    metrics = {}
+    metrics ={
+        "std_input": std_input,
+        "std_output": std_output,
+        "avg_input": avg_input,
+        "avg_output": avg_output,
+        "p50_input": p50_input,
+        "p50_output": p50_output,
+        "p95_input": p95_input,
+        "p95_output": p95_output,
+        "p99_input": p99_input,
+        "p99_output": p99_output
+    }
+    csv_path = "arxiv_summary.csv"
+    metrics_df = pd.DataFrame([metrics])
+    if os.path.exists(csv_path):
+        metrics_df.to_csv(csv_path, mode='a', index=False, header=False)
+    else:
+        metrics_df.to_csv(csv_path, index=False, header=True)
+
+def analysis_sharegpt():
+    sharegpt_calls = load_sharegpt_traces()
+    inputs = []
+    outputs = []
+    for llm_call in sharegpt_calls:
+        prefill_token = llm_call.prefill_tokens
+        decode_token = llm_call.decode_tokens
+        inputs.append(prefill_token)
+        outputs.append(decode_token)
+    
+    inputs = sorted(inputs)
+    outputs = sorted(outputs)
+    std_input  = calculate_std(inputs)
+    std_output = calculate_std(outputs)
+    avg_input = np.mean(inputs)
+    avg_output = np.mean(outputs)
+    p50_input = np.percentile(inputs, 50)
+    p50_output = np.percentile(outputs, 50)
+    p95_input = np.percentile(inputs, 95)
+    p95_output = np.percentile(outputs, 95)
+    p99_input = np.percentile(inputs, 99)
+    p99_output = np.percentile(outputs, 99)
+    metrics = {}
+    metrics ={
+        "std_input": std_input,
+        "std_output": std_output,
+        "avg_input": avg_input,
+        "avg_output": avg_output,
+        "p50_input": p50_input,
+        "p50_output": p50_output,
+        "p95_input": p95_input,
+        "p95_output": p95_output,
+        "p99_input": p99_input,
+        "p99_output": p99_output
+    }
+
+    csv_path = "sharegpt.csv"
+    metrics_df = pd.DataFrame([metrics])
+    if os.path.exists(csv_path):
+        metrics_df.to_csv(csv_path, mode='a', index=False, header=False)
+    else:
+        metrics_df.to_csv(csv_path, index=False, header=True)
+
 
 #generate short reqs(prefill + decodes: hundreds of tokens), from sharegpt 
 #long reqs:(prefil: thousands of tokens, decode:  thousands of tokens)
