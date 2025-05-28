@@ -42,6 +42,7 @@ class LLMCall(GenericCall):
     total_waiting_time: float = None
     total_execution_time: float = None
     total_completion_time: float = None
+    total_scheduler_time: float = None
     kv_cache_is_swap: bool = False # Xiao: when the kv cache is too long, it will swap out
     pcie_budget:int = 0 #: the pcie budget
     prefill_done: bool = False #Note: whether the prefill is done
